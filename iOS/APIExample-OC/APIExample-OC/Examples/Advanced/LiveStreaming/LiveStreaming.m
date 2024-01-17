@@ -10,7 +10,7 @@
 #import "APIExample_OC-swift.h"
 #import "VideoView.h"
 #import "KeyCenter.h"
-
+#define perLength 882
 @interface LiveStreamingEntry ()
 @property (weak, nonatomic) IBOutlet UITextField *channelNameTextField;
 @property (weak, nonatomic) IBOutlet UIButton *preloadButton;
@@ -121,6 +121,7 @@
 @property (weak, nonatomic) IBOutlet UIButton *takeSnapshot;
 @property (weak, nonatomic) IBOutlet UIView *ultraLowLatencyToggleView;
 @property (weak, nonatomic) IBOutlet UISwitch *ultraLowLatencyToggle;
+@property (nonatomic, assign) BOOL enablePlayMusic;
 
 @property (nonatomic, strong)VideoView *localView;
 @property (nonatomic, strong)VideoView *remoteView;
@@ -129,10 +130,21 @@
 @property (nonatomic, strong) AgoraRtcEngineKit *agoraKit;
 @property (nonatomic, assign) BOOL isLocalVideoForeground;
 @property (nonatomic, assign) BOOL isUltraLowLatencyOn;
+@property (nonatomic, strong) UISwitch *playMusicSwitch;
+@property (nonatomic, assign) NSInteger  pcmLocation;
+@property (nonatomic, strong) NSData *pcmdata;
 
 @end
 
 @implementation LiveStreaming
+- (UISwitch *)playMusicSwitch {
+    if (!_playMusicSwitch) {
+        _playMusicSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(100, 100, 120, 44)];
+        [_playMusicSwitch addTarget:self action:@selector(playMusicAction:) forControlEvents:UIControlEventValueChanged];
+    }
+    return _playMusicSwitch;
+}
+
 - (VideoView *)localView {
     if (_localView == nil) {
         _localView = (VideoView *)[NSBundle loadVideoViewFormType:StreamTypeLocal audioOnly:NO];
@@ -191,11 +203,19 @@
     [[self.remoteView.trailingAnchor constraintEqualToAnchor:self.backgroundVideoContainer.trailingAnchor]setActive:YES];
     [[self.remoteView.bottomAnchor constraintEqualToAnchor:self.backgroundVideoContainer.bottomAnchor]setActive:YES];
     
+    [self.view addSubview:self.playMusicSwitch];
+
+    self.enablePlayMusic = NO;
+    self.pcmLocation = 0;
+    self.pcmdata = [[NSData alloc] initWithContentsOfFile:[NSBundle.mainBundle pathForResource:@"music_44100_mono.pcm" ofType:nil]];
+    
     // set up agora instance when view loadedlet config = AgoraRtcEngineConfig()
     AgoraRtcEngineConfig *config = [[AgoraRtcEngineConfig alloc] init];
     config.appId = KeyCenter.AppId;
     config.channelProfile = AgoraChannelProfileLiveBroadcasting;
     self.agoraKit = [AgoraRtcEngineKit sharedEngineWithConfig:config delegate:self];
+    [self.agoraKit setAudioProfile:(AgoraAudioProfileMusicStandard)];
+    [self.agoraKit setAudioScenario:(AgoraAudioScenarioGameStreaming)];
     BOOL isFirstFrame = [((NSNumber *)[self.configs objectForKey:@"isFirstFrame"])boolValue];
     if (isFirstFrame) {
         [self.agoraKit enableInstantMediaRendering];
@@ -214,7 +234,7 @@
     [self updateClientRole: self.role];
     
     // enable video module and set up video encoding configs
-    [self.agoraKit enableVideo];
+    //[self.agoraKit enableVideo];
     
     // Set audio route to speaker
     [self.agoraKit setDefaultAudioRouteToSpeakerphone:YES];
@@ -227,11 +247,13 @@
     // the token has to match the ones used for channel join
     AgoraRtcChannelMediaOptions *options = [[AgoraRtcChannelMediaOptions alloc] init];
     options.autoSubscribeAudio = YES;
-    options.autoSubscribeVideo = YES;
+    options.autoSubscribeVideo = NO;
     options.publishCameraTrack = self.role == AgoraClientRoleBroadcaster;
     options.publishMicrophoneTrack = self.role == AgoraClientRoleBroadcaster;
     options.clientRoleType = self.role;
     
+    [self.agoraKit setRecordingAudioFrameParametersWithSampleRate:44100 channel:1 mode:AgoraAudioRawFrameOperationModeReadWrite samplesPerCall:441];
+    [self.agoraKit setAudioFrameDelegate:self];
     [[NetworkManager shared] generateTokenWithChannelName:channelName uid:0 success:^(NSString * _Nullable token) {
         BOOL preloadChannel = [((NSNumber *)[self.configs objectForKey:@"isPreloadChannel"])boolValue];
         if (preloadChannel) {
@@ -275,7 +297,7 @@
     [self.agoraKit setClientRole:(AgoraClientRoleBroadcaster)];
     // enable video module and set up video encoding configs
     [self.agoraKit enableAudio];
-    [self.agoraKit enableVideo];
+    //[self.agoraKit enableVideo];
     
     AgoraVideoEncoderConfiguration *encoderConfig = [[AgoraVideoEncoderConfiguration alloc] initWithSize:CGSizeMake(960, 540)
                                                                                                frameRate:(AgoraVideoFrameRateFps15)
@@ -460,4 +482,85 @@
     [self.remoteView setStats:stats];
 }
 
+/*
+ 我们是按照位深16存储的，按照一个字节占8位的规则16bit=2byte,
+ 所以数据相加的话，就是取出2个字节进行小端移位为一个整数，
+ 两个整数相加后，重新移位为2个字节类型的数据
+ */
+
+short RecordSingBytesToUint16(SignedByte bytes[2])
+{
+    short addr = bytes[0] & 0xFF;
+    addr |= ((bytes[1] << 8) & 0xFF00);
+    return addr;
+}
+
+void RecordSingUint16ToBytes(short input,SignedByte bytes[2])
+{
+    bytes[0] = (SignedByte) (0xff & input);
+    bytes[1] = (SignedByte) ((0xff00 & input) >> 8);
+}
+/*
+ 位深16进行存储，最小值-2的15次方，最大值2的15次方-1
+ -2的15次方 = -32768
+ 2的15次方-1 = 32767
+ */
+- (short)mixInter:(short)a withB:(short)b {
+    return (short)MAX(MIN((int)a + (int)b, 32767), -32768);
+}
+
+- (NSData *)pcmMergeAction:(NSData *)personData musicData:(NSData *)musicData {
+    NSLog(@"准备合并PCM");
+    
+    NSMutableData *mixData = [NSMutableData data];
+    
+    for (NSInteger index = 0; index < personData.length; index +=2) {
+        //取出人声数据
+        NSData *childPersonData = [personData subdataWithRange:NSMakeRange(index, 2)];
+        SignedByte *childPersonbytes = (SignedByte *)[childPersonData bytes];
+        
+        short personInter = RecordSingBytesToUint16(childPersonbytes);
+        //取出伴奏数据
+        NSData *childMusicData = [musicData subdataWithRange:NSMakeRange(index, 2)];
+        SignedByte *childMusicbytes = (SignedByte *)[childMusicData bytes];
+        short musicInter = RecordSingBytesToUint16(childMusicbytes);
+        //合并
+        
+        short mixInter = [self mixInter:personInter withB:musicInter];
+        SignedByte mixByte[2] = {0};
+        RecordSingUint16ToBytes(mixInter, mixByte);
+        NSData *childMixData = [NSData dataWithBytes:mixByte length:2];
+        [mixData appendData:childMixData];
+        
+    }
+    return mixData;
+}
+
+- (BOOL)onRecordAudioFrame:(AgoraAudioFrame* _Nonnull)frame channelId:(NSString * _Nonnull)channelId {
+    /*
+     buffer ' = ' samplesPerChannel ' × ' channels ' × ' bytesPerSample '。
+     */
+    //NSLog(@"samplesPerChannel = %zi,channels = %zi,bytesPerSample = %zi",frame.samplesPerChannel,frame.channels,frame.bytesPerSample);
+    //memcpy(data, converOutput, dataLength);
+   // dstData = [NSData dataWithBytes:frame.buffer length:882].bytes;
+   // memcpy(frame.buffer, <#const void *src#>, 882)
+    if (!self.enablePlayMusic) {
+        return YES;
+    }
+    if ((self.pcmLocation * perLength + perLength) <= self.pcmdata.length) {
+       //#define perLength   320
+        NSData *subdata = [self.pcmdata subdataWithRange:NSMakeRange(self.pcmLocation * perLength, perLength)];
+        //内存拷贝覆盖
+        memcpy(frame.buffer, [self pcmMergeAction:[NSData dataWithBytes:frame.buffer length:perLength] musicData:subdata].bytes, perLength);
+        self.pcmLocation +=1;
+    }
+    else {
+        NSLog(@"pcm文件播放完了");
+    }
+    return YES;
+}
+
+- (void)playMusicAction:(UISwitch *)sender {
+    self.enablePlayMusic = self.playMusicSwitch.isOn;
+}
 @end

@@ -7,8 +7,8 @@
 
 #import "KeyCenter.h"
 
-static NSString * const APPID = <#YOUR APPID#>
-static NSString * const Certificate = nil;
+static NSString * const APPID = @"abc54617574441fbb42ce41f57c044fe";
+static NSString * const Certificate = @"d99a513117264109987ed3340c495e78";
 
 @implementation KeyCenter
 

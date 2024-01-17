@@ -85,7 +85,7 @@
     
     // Enable content inspect with local video view
     AgoraContentInspectModule *moderateModule = [[AgoraContentInspectModule alloc] init];
-    moderateModule.type = AgoraContentInspectTypeImageModeration;
+    moderateModule.type = AgoraContentInspectTypeModeration;
     moderateModule.interval = 1;
     
     AgoraContentInspectConfig *inspectConfig = [[AgoraContentInspectConfig alloc] init];
