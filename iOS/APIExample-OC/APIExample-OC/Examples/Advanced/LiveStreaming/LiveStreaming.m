@@ -215,7 +215,7 @@
     config.channelProfile = AgoraChannelProfileLiveBroadcasting;
     self.agoraKit = [AgoraRtcEngineKit sharedEngineWithConfig:config delegate:self];
     [self.agoraKit setAudioProfile:(AgoraAudioProfileMusicStandard)];
-    [self.agoraKit setAudioScenario:(AgoraAudioScenarioGameStreaming)];
+    [self.agoraKit setAudioScenario:(AgoraAudioScenarioChatRoom)];
     BOOL isFirstFrame = [((NSNumber *)[self.configs objectForKey:@"isFirstFrame"])boolValue];
     if (isFirstFrame) {
         [self.agoraKit enableInstantMediaRendering];
@@ -234,7 +234,7 @@
     [self updateClientRole: self.role];
     
     // enable video module and set up video encoding configs
-    //[self.agoraKit enableVideo];
+    [self.agoraKit disableVideo];
     
     // Set audio route to speaker
     [self.agoraKit setDefaultAudioRouteToSpeakerphone:YES];
@@ -297,7 +297,7 @@
     [self.agoraKit setClientRole:(AgoraClientRoleBroadcaster)];
     // enable video module and set up video encoding configs
     [self.agoraKit enableAudio];
-    //[self.agoraKit enableVideo];
+    [self.agoraKit disableVideo];
     
     AgoraVideoEncoderConfiguration *encoderConfig = [[AgoraVideoEncoderConfiguration alloc] initWithSize:CGSizeMake(960, 540)
                                                                                                frameRate:(AgoraVideoFrameRateFps15)
