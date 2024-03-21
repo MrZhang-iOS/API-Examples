@@ -227,8 +227,8 @@
     // for audience put local video in foreground
     self.isLocalVideoForeground = self.role == AgoraClientRoleAudience;
     // if inital role is broadcaster, do not show audience options
-    [self.clientRoleToggleView setHidden:self.role == AgoraClientRoleBroadcaster];
-    [self.ultraLowLatencyToggleView setHidden:self.role == AgoraClientRoleBroadcaster];
+    //[self.clientRoleToggleView setHidden:self.role == AgoraClientRoleBroadcaster];
+    //[self.ultraLowLatencyToggleView setHidden:self.role == AgoraClientRoleBroadcaster];
     
     // make this room live broadcasting room
     [self updateClientRole: self.role];
@@ -556,6 +556,7 @@ void RecordSingUint16ToBytes(short input,SignedByte bytes[2])
     }
     else {
         NSLog(@"pcm文件播放完了");
+        self.pcmLocation = 0;
     }
     return YES;
 }

@@ -10,6 +10,7 @@
 		749177BD2429C778B3C6D520 /* Pods_APIExample_OC.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D931C433C0CD269F3C3323D /* Pods_APIExample_OC.framework */; };
 		864AC4B72B3435FC00666878 /* AVCaptureSession+Hook.m in Sources */ = {isa = PBXBuildFile; fileRef = 864AC4B52B3435FC00666878 /* AVCaptureSession+Hook.m */; };
 		864AC4B82B3435FC00666878 /* AVCaptureSession+HookStopRunning.m in Sources */ = {isa = PBXBuildFile; fileRef = 864AC4B62B3435FC00666878 /* AVCaptureSession+HookStopRunning.m */; };
+		867D38172BABE99A0067D2F7 /* test.wav in Resources */ = {isa = PBXBuildFile; fileRef = 867D38162BABE99A0067D2F7 /* test.wav */; };
 		86A3BE052B57BB9200A9C9DF /* music_44100_mono.pcm in Resources */ = {isa = PBXBuildFile; fileRef = 86A3BE042B57BB9200A9C9DF /* music_44100_mono.pcm */; };
 		961E8DCA7B4A6B12564DDC18 /* Pods_SimpleFilter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D0773F7A8BA9611CF846635 /* Pods_SimpleFilter.framework */; };
 		C2C764A5CC78FAC392BE5584 /* Pods_Agora_ScreenShare_Extension_OC.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 27A6720DD8507EB2C642C0FD /* Pods_Agora_ScreenShare_Extension_OC.framework */; };
@@ -181,6 +182,7 @@
 		864AC4B42B3435FC00666878 /* AVCaptureSession+Hook.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "AVCaptureSession+Hook.h"; sourceTree = SOURCE_ROOT; };
 		864AC4B52B3435FC00666878 /* AVCaptureSession+Hook.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "AVCaptureSession+Hook.m"; sourceTree = SOURCE_ROOT; };
 		864AC4B62B3435FC00666878 /* AVCaptureSession+HookStopRunning.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "AVCaptureSession+HookStopRunning.m"; sourceTree = SOURCE_ROOT; };
+		867D38162BABE99A0067D2F7 /* test.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = test.wav; sourceTree = "<group>"; };
 		86A3BE042B57BB9200A9C9DF /* music_44100_mono.pcm */ = {isa = PBXFileReference; lastKnownFileType = file; path = music_44100_mono.pcm; sourceTree = "<group>"; };
 		A0C8D95022D679A807C9CA1F /* Pods-APIExample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-APIExample.debug.xcconfig"; path = "Target Support Files/Pods-APIExample/Pods-APIExample.debug.xcconfig"; sourceTree = "<group>"; };
 		B653B1910F3D2DB664FFCA69 /* Pods-Agora-ScreenShare-Extension-OC.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Agora-ScreenShare-Extension-OC.debug.xcconfig"; path = "Target Support Files/Pods-Agora-ScreenShare-Extension-OC/Pods-Agora-ScreenShare-Extension-OC.debug.xcconfig"; sourceTree = "<group>"; };
@@ -746,6 +748,7 @@
 		E72F61A02A710AB200C963D2 /* MediaPlayer */ = {
 			isa = PBXGroup;
 			children = (
+				867D38162BABE99A0067D2F7 /* test.wav */,
 				E72F61A12A710AB200C963D2 /* MediaPlayer.h */,
 				E72F61A32A710AB200C963D2 /* MediaPlayer.m */,
 				E72F61A62A710B1500C963D2 /* MediaPlayer.storyboard */,
@@ -1112,6 +1115,7 @@
 				E70ADE702A5FDC45009947CF /* JoinChannelVideoRecorder.storyboard in Resources */,
 				E70ADE552A5F9F83009947CF /* JoinChannelVideoToken.storyboard in Resources */,
 				E7361F582A6E5E9300925BD6 /* RawAudioData.storyboard in Resources */,
+				867D38172BABE99A0067D2F7 /* test.wav in Resources */,
 				E70ADEA82A64EA5C009947CF /* RTMPStreaming.storyboard in Resources */,
 				86A3BE052B57BB9200A9C9DF /* music_44100_mono.pcm in Resources */,
 				E7361F5F2A6E60B100925BD6 /* RawVideoData.storyboard in Resources */,

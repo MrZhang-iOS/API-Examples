@@ -218,7 +218,15 @@
 
 - (IBAction)doOpenMediaUrlWithSender:(UIButton *)sender {
     [self.mediaUrlField resignFirstResponder];
-    [self.mediaPlayerKit open:self.mediaUrlField.text startPos:0];
+    NSString *textInField = self.mediaUrlField.text;
+    if (textInField.length <= 0) {
+        NSString *filePath = [[NSBundle mainBundle] pathForResource:@"test" ofType:@"wav"];
+        [self.mediaPlayerKit open:filePath startPos:0];
+    } else {
+        [self.mediaPlayerKit open:self.mediaUrlField.text startPos:0];
+    }
+    
+    [self.mediaPlayerKit setLoopCount:-1];
 }
 - (IBAction)doPlayWithSender:(UIButton *)sender {
     [self.mediaPlayerKit play];
