@@ -13,6 +13,7 @@
 
 @interface MediaChannelRelayEntry ()
 @property (weak, nonatomic) IBOutlet UITextField *textField;
+@property (nonatomic, strong) IBOutlet UISegmentedControl *roleSegmentCtrl;
 
 @end
 
@@ -20,6 +21,7 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.roleSegmentCtrl.selectedSegmentIndex = 0;
 }
 
 - (IBAction)onClickJoinButton:(id)sender {
@@ -27,7 +29,7 @@
     
     UIStoryboard *storyBoard = [UIStoryboard storyboardWithName:@"MediaChannelRelay" bundle:nil];
     BaseViewController *newViewController = [storyBoard instantiateViewControllerWithIdentifier:@"MediaChannelRelay"];
-    newViewController.configs = @{@"channelName": self.textField.text};
+    newViewController.configs = @{@"channelName": self.textField.text, @"broadcasterRole":@(self.roleSegmentCtrl.selectedSegmentIndex == 0)};
     [self.navigationController pushViewController:newViewController animated:YES];
 }
 
@@ -40,8 +42,11 @@
 @property (weak, nonatomic) IBOutlet UIButton *relayButton;
 @property (nonatomic, strong)VideoView *localView;
 @property (nonatomic, strong)VideoView *remoteView;
+@property (nonatomic, strong)VideoView *remoteView2;
+@property (nonatomic, strong)VideoView *remoteView3;
 @property (nonatomic, strong)AgoraRtcEngineKit *agoraKit;
 @property (nonatomic, assign) BOOL isRelaying;
+
 @end
 
 @implementation MediaChannelRelay
@@ -65,6 +70,20 @@
     return _remoteView;
 }
 
+- (VideoView *)remoteView2 {
+    if (_remoteView2 == nil) {
+        _remoteView2 = (VideoView *)[NSBundle loadVideoViewFormType:StreamTypeRemote audioOnly:NO];
+    }
+    return _remoteView2;
+}
+
+- (VideoView *)remoteView3 {
+    if (_remoteView3 == nil) {
+        _remoteView3 = (VideoView *)[NSBundle loadVideoViewFormType:StreamTypeRemote audioOnly:NO];
+    }
+    return _remoteView3;
+}
+
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -72,7 +91,9 @@
     // layout render view
     [self.localView setPlaceholder:@"Local Host".localized];
     [self.remoteView setPlaceholder:@"Remote Host".localized];
-    [self.containerView layoutStream:@[self.localView, self.remoteView]];
+    [self.remoteView2 setPlaceholder:@"Remote Host".localized];
+    [self.remoteView3 setPlaceholder:@"Remote Host".localized];
+    [self.containerView layoutStream:@[self.localView, self.remoteView, self.remoteView2, self.remoteView3]];
     
     // set up agora instance when view loaded
     AgoraRtcEngineConfig *config = [[AgoraRtcEngineConfig alloc] init];
@@ -82,6 +103,7 @@
     self.agoraKit = [AgoraRtcEngineKit sharedEngineWithConfig:config delegate:self];
     
     NSString *channelName = [self.configs objectForKey:@"channelName"];
+    BOOL isBroadcasterRole = [[self.configs objectForKey:@"broadcasterRole"] boolValue];
     // make myself a broadcaster
     [self.agoraKit setClientRole:(AgoraClientRoleBroadcaster)];
     // enable video module and set up video encoding configs
@@ -119,7 +141,7 @@
     options.autoSubscribeVideo = YES;
     options.publishCameraTrack = YES;
     options.publishMicrophoneTrack = YES;
-    options.clientRoleType = AgoraClientRoleBroadcaster;
+    options.clientRoleType = isBroadcasterRole?AgoraClientRoleBroadcaster:AgoraClientRoleAudience;
     
     [[NetworkManager shared] generateTokenWithChannelName:channelName uid:0 success:^(NSString * _Nullable token) {
         int result = [self.agoraKit joinChannelByToken:token channelId:channelName uid:0 mediaOptions:options joinSuccess:nil];
@@ -146,7 +168,8 @@
     // configure target channel info
     AgoraChannelMediaRelayInfo *destinationInfo = [[AgoraChannelMediaRelayInfo alloc] initWithToken:nil];
     [config setDestinationInfo:destinationInfo forChannelName:destinationChannelName];
-    [self.agoraKit startOrUpdateChannelMediaRelay:config];
+    int result = [self.agoraKit startOrUpdateChannelMediaRelay:config];
+    NSLog(@"startOrUpdateChannelMediaRelay: %d", result);
 }
 - (IBAction)doStop:(id)sender {
     [self.agoraKit stopChannelMediaRelay];
@@ -190,13 +213,31 @@
     // Only one remote video view is available for this
     // tutorial. Here we check if there exists a surface
     // view tagged as this uid.
-    AgoraRtcVideoCanvas *videoCanvas = [[AgoraRtcVideoCanvas alloc]init];
-    videoCanvas.uid = uid;
-    // the view to be binded
-    videoCanvas.view = self.remoteView.videoView;
-    videoCanvas.renderMode = AgoraVideoRenderModeHidden;
-    [self.agoraKit setupRemoteVideo:videoCanvas];
-    self.remoteView.uid = uid;
+    if (0 == self.remoteView.uid) {
+        AgoraRtcVideoCanvas *videoCanvas = [[AgoraRtcVideoCanvas alloc]init];
+        videoCanvas.uid = uid;
+        // the view to be binded
+        videoCanvas.view = self.remoteView.videoView;
+        videoCanvas.renderMode = AgoraVideoRenderModeHidden;
+        [self.agoraKit setupRemoteVideo:videoCanvas];
+        self.remoteView.uid = uid;
+    } else if (0 == self.remoteView2.uid) {
+        AgoraRtcVideoCanvas *videoCanvas = [[AgoraRtcVideoCanvas alloc]init];
+        videoCanvas.uid = uid;
+        // the view to be binded
+        videoCanvas.view = self.remoteView2.videoView;
+        videoCanvas.renderMode = AgoraVideoRenderModeHidden;
+        [self.agoraKit setupRemoteVideo:videoCanvas];
+        self.remoteView2.uid = uid;
+    } else if (0 == self.remoteView3.uid) {
+        AgoraRtcVideoCanvas *videoCanvas = [[AgoraRtcVideoCanvas alloc]init];
+        videoCanvas.uid = uid;
+        // the view to be binded
+        videoCanvas.view = self.remoteView3.videoView;
+        videoCanvas.renderMode = AgoraVideoRenderModeHidden;
+        [self.agoraKit setupRemoteVideo:videoCanvas];
+        self.remoteView3.uid = uid;
+    }
 }
 
 /// callback when a remote user is leaving the channel, note audience in live broadcast mode will NOT trigger this event
@@ -207,12 +248,28 @@
     // to unlink your view from sdk, so that your view reference will be released
     // note the video will stay at its last frame, to completely remove it
     // you will need to remove the EAGL sublayer from your binded view
-    AgoraRtcVideoCanvas *videoCanvas = [[AgoraRtcVideoCanvas alloc]init];
-    videoCanvas.uid = uid;
-    // the view to be binded
-    videoCanvas.view = nil;
-    [self.agoraKit setupRemoteVideo:videoCanvas];
-    self.remoteView.uid = 0;
+    if (uid == self.remoteView.uid) {
+        AgoraRtcVideoCanvas *videoCanvas = [[AgoraRtcVideoCanvas alloc]init];
+        videoCanvas.uid = uid;
+        // the view to be binded
+        videoCanvas.view = nil;
+        [self.agoraKit setupRemoteVideo:videoCanvas];
+        self.remoteView.uid = 0;
+    } else if (uid == self.remoteView2.uid) {
+        AgoraRtcVideoCanvas *videoCanvas = [[AgoraRtcVideoCanvas alloc]init];
+        videoCanvas.uid = uid;
+        // the view to be binded
+        videoCanvas.view = nil;
+        [self.agoraKit setupRemoteVideo:videoCanvas];
+        self.remoteView2.uid = 0;
+    } else if (uid == self.remoteView3.uid) {
+        AgoraRtcVideoCanvas *videoCanvas = [[AgoraRtcVideoCanvas alloc]init];
+        videoCanvas.uid = uid;
+        // the view to be binded
+        videoCanvas.view = nil;
+        [self.agoraKit setupRemoteVideo:videoCanvas];
+        self.remoteView3.uid = 0;
+    }
     [LogUtil log:[NSString stringWithFormat:@"remote user left: %lu", uid] level:(LogLevelDebug)];
 }
 
@@ -233,6 +290,10 @@
         default:
             break;
     }
+}
+
+- (void)rtcEngine:(AgoraRtcEngineKit *)engine didReceiveChannelMediaRelayEvent:(AgoraChannelMediaRelayEvent)event {
+    [LogUtil log:[NSString stringWithFormat:@"didReceiveChannelMediaRelayEvent event: %ld", event]];
 }
 
 @end
