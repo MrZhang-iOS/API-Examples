@@ -37,6 +37,8 @@
 @property (nonatomic, weak)VideoView *remoteView;
 @property (nonatomic, copy)NSString *channelName2;
 @property (nonatomic, weak)AgoraRtcEngineKit *agoraKit;
+@property (nonatomic, assign) int multiChannelUid;
+@property (nonatomic, strong) AgoraRtcConnection *channel2Connection;
 @end
 @implementation Channel2Delegate
 
@@ -47,18 +49,18 @@
 /// cn: https://docs.agora.io/cn/Voice/API%20Reference/oc/Constants/AgoraErrorCode.html
 /// @param errorCode error code of the problem
 - (void)rtcEngine:(AgoraRtcEngineKit *)engine didOccurError:(AgoraErrorCode)errorCode {
-    [LogUtil log:[NSString stringWithFormat:@"Error %ld occur",errorCode] level:(LogLevelError)];
+    [LogUtil log:[NSString stringWithFormat:@"zz-- Error %ld occur",errorCode] level:(LogLevelError)];
 }
 
 - (void)rtcEngine:(AgoraRtcEngineKit *)engine didJoinChannel:(NSString *)channel withUid:(NSUInteger)uid elapsed:(NSInteger)elapsed {
-    [LogUtil log:[NSString stringWithFormat:@"Join %@ with uid %lu elapsed %ldms", channel, uid, elapsed] level:(LogLevelDebug)];
+    [LogUtil log:[NSString stringWithFormat:@"zz-- Join %@ with uid %lu elapsed %ldms", channel, uid, elapsed] level:(LogLevelDebug)];
 }
 
 /// callback when a remote user is joinning the channel, note audience in live broadcast mode will NOT trigger this event
 /// @param uid uid of remote joined user
 /// @param elapsed time elapse since current sdk instance join the channel in ms
 - (void)rtcEngine:(AgoraRtcEngineKit *)engine didJoinedOfUid:(NSUInteger)uid elapsed:(NSInteger)elapsed {
-    [LogUtil log:[NSString stringWithFormat:@"remote user join: %lu %ldms", uid, elapsed] level:(LogLevelDebug)];
+    [LogUtil log:[NSString stringWithFormat:@"zz-- remote user join: %lu %ldms", uid, elapsed] level:(LogLevelDebug)];
     // Only one remote video view is available for this
     // tutorial. Here we check if there exists a surface
     // view tagged as this uid.
@@ -67,8 +69,8 @@
     // the view to be binded
     videoCanvas.view = self.remoteView.videoView;
     videoCanvas.renderMode = AgoraVideoRenderModeHidden;
-    AgoraRtcConnection *connect = [[AgoraRtcConnection alloc] initWithChannelId:self.channelName2 localUid:999];
-    [self.agoraKit setupRemoteVideoEx:videoCanvas connection:connect];
+    
+    [self.agoraKit setupRemoteVideoEx:videoCanvas connection:self.channel2Connection];
     self.remoteView.uid = uid;
 }
 
@@ -84,10 +86,10 @@
     videoCanvas.uid = uid;
     // the view to be binded
     videoCanvas.view = nil;
-    AgoraRtcConnection *connect = [[AgoraRtcConnection alloc] initWithChannelId:self.channelName2 localUid:999];
-    [self.agoraKit setupRemoteVideoEx:videoCanvas connection:connect];
+    
+    [self.agoraKit setupRemoteVideoEx:videoCanvas connection:self.channel2Connection];
     self.remoteView.uid = 0;
-    [LogUtil log:[NSString stringWithFormat:@"remote user left: %lu", uid] level:(LogLevelDebug)];
+    [LogUtil log:[NSString stringWithFormat:@"zz-- remote user left: %lu", uid] level:(LogLevelDebug)];
 }
 
 @end
@@ -103,8 +105,11 @@
 
 @property (nonatomic, strong)AgoraRtcEngineKit *agoraKit;
 
+@property (nonatomic, assign) int localUid;
+@property (nonatomic, assign) int multiChannelUid;
 @property (nonatomic, copy)NSString *channelName2;
 @property (nonatomic, strong)Channel2Delegate *channel2Delegate;
+@property (nonatomic, strong) AgoraRtcConnection *channel2Connection;
 
 @end
 
@@ -142,6 +147,8 @@
     [super viewDidLoad];
     
     NSString *channelName = [self.configs objectForKey:@"channelName"];
+    self.localUid = fabs(arc4random()%100000);
+    self.multiChannelUid = self.localUid+100000;
     self.channelName2 = [NSString stringWithFormat:@"%@-2",channelName];
     // layout render view
     [self.localView setPlaceholder:@"Local Host".localized];
@@ -177,7 +184,7 @@
     
     // set up local video to render your local camera preview
     AgoraRtcVideoCanvas *videoCanvas = [[AgoraRtcVideoCanvas alloc] init];
-    videoCanvas.uid = 0;
+    videoCanvas.uid = self.localUid;
     // the view to be binded
     videoCanvas.view = self.localView.videoView;
     videoCanvas.renderMode = AgoraVideoRenderModeHidden;
@@ -201,8 +208,8 @@
     options.publishMicrophoneTrack = YES;
     options.clientRoleType = AgoraClientRoleBroadcaster;
     
-    [[NetworkManager shared] generateTokenWithChannelName:channelName uid:0 success:^(NSString * _Nullable token) {
-        int result = [self.agoraKit joinChannelByToken:token channelId:channelName uid:0 mediaOptions:options joinSuccess:nil];
+    [[NetworkManager shared] generateTokenWithChannelName:channelName uid:self.localUid success:^(NSString * _Nullable token) {
+        int result = [self.agoraKit joinChannelByToken:token channelId:channelName uid:self.localUid mediaOptions:options joinSuccess:nil];
         if (result != 0) {
             // Usually happens with invalid parameters
             // Error code description can be found at:
@@ -219,9 +226,11 @@
     options2.publishMicrophoneTrack = YES;
     options2.clientRoleType = AgoraClientRoleBroadcaster;
     
-    AgoraRtcConnection *connection = [[AgoraRtcConnection alloc] initWithChannelId:self.channelName2 localUid:999];
-    [[NetworkManager shared] generateTokenWithChannelName:self.channelName2 uid:999 success:^(NSString * _Nullable token) {
-        int result = [self.agoraKit joinChannelExByToken:token connection:connection delegate:self.channel2Delegate mediaOptions:options2 joinSuccess:nil];
+    self.channel2Connection = [[AgoraRtcConnection alloc] initWithChannelId:self.channelName2 localUid:self.multiChannelUid];
+    self.channel2Delegate.multiChannelUid = self.multiChannelUid;
+    self.channel2Delegate.channel2Connection = self.channel2Connection;
+    [[NetworkManager shared] generateTokenWithChannelName:self.channelName2 uid:self.channel2Delegate.multiChannelUid success:^(NSString * _Nullable token) {
+        int result = [self.agoraKit joinChannelExByToken:token connection:self.channel2Connection delegate:self.channel2Delegate mediaOptions:options2 joinSuccess:nil];
         if (result != 0) {
             // Usually happens with invalid parameters
             // Error code description can be found at:
@@ -233,15 +242,14 @@
 }
 
 - (IBAction)onTapLeaveChannelEx:(id)sender {
-    AgoraRtcConnection *connection = [[AgoraRtcConnection alloc] initWithChannelId:self.channelName2 localUid:999];
     AgoraLeaveChannelOptions *channelOptions = [[AgoraLeaveChannelOptions alloc] init];
     UIAlertController *alertVC = [UIAlertController alertControllerWithTitle:@"stopMicrophoneRecording".localized message:nil preferredStyle:(UIAlertControllerStyleAlert)];
     UIAlertAction *cancel = [UIAlertAction actionWithTitle:@"Cancel".localized style:(UIAlertActionStyleCancel) handler:^(UIAlertAction * _Nonnull action) {
-        [self.agoraKit leaveChannelEx:connection options:channelOptions leaveChannelBlock:nil];
+        [self.agoraKit leaveChannelEx:self.channel2Connection options:channelOptions leaveChannelBlock:nil];
     }];
     UIAlertAction *sure = [UIAlertAction actionWithTitle:@"Stop".localized style:(UIAlertActionStyleDefault) handler:^(UIAlertAction * _Nonnull action) {
         channelOptions.stopMicrophoneRecording = YES;
-        [self.agoraKit leaveChannelEx:connection options:channelOptions leaveChannelBlock:nil];
+        [self.agoraKit leaveChannelEx:self.channel2Connection options:channelOptions leaveChannelBlock:nil];
     }];
     [alertVC addAction:cancel];
     [alertVC addAction:sure];
@@ -254,8 +262,7 @@
     [self.agoraKit disableVideo];
     [self.agoraKit stopPreview];
     [self.agoraKit leaveChannel:nil];
-    AgoraRtcConnection *connection = [[AgoraRtcConnection alloc] initWithChannelId:self.channelName2 localUid:999];
-    [self.agoraKit leaveChannelEx:connection leaveChannelBlock:nil];
+    [self.agoraKit leaveChannelEx:self.channel2Connection leaveChannelBlock:nil];
     [AgoraRtcEngineKit destroy];
 }
 
