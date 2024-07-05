@@ -71,7 +71,7 @@
         [view removeFromSuperview];
     }
     UICollectionViewFlowLayout *flowLayout = [[UICollectionViewFlowLayout alloc]init];
-    NSInteger count = views.count > 2 ? 2 : views.count;
+    NSInteger count = views.count > 4 ? 4 : views.count;
     flowLayout.itemSize = CGSizeMake(self.bounds.size.width / count, self.bounds.size.height);
     flowLayout.estimatedItemSize = CGSizeZero;
     flowLayout.minimumLineSpacing = 0;
