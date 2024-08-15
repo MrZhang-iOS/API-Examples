@@ -137,12 +137,16 @@ class MediaChannelRelayMain: BaseViewController {
         // configure target channel info
         let destinationInfo = AgoraChannelMediaRelayInfo(token: nil)
         config.setDestinationInfo(destinationInfo, forChannelName: destinationChannelName)
-        agoraKit.startChannelMediaRelay(config)
+        let result = agoraKit.startChannelMediaRelay(config)
+        
+        LogUtils.log(message: "startChannelMediaRelay: \(result)", level: .info)
     }
     
     /// stop relay
     @IBAction func doStop(_ sender: UIButton) {
-        agoraKit.stopChannelMediaRelay()
+        let result = agoraKit.stopChannelMediaRelay()
+        
+        LogUtils.log(message: "startChannelMediaRelay: \(result)", level: .info)
     }
     
     override func willMove(toParent parent: UIViewController?) {
